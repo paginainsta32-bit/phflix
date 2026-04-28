@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>PHFLIX - Pro Edition</title>
+    <title>PHFLIX - Temporadas Edition</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         :root { --red: #e50914; --bg: #0a0a0a; --card-bg: #181818; }
@@ -18,7 +18,6 @@
 
         #main-ui { display: block; padding-top: 80px; }
         
-        /* GRID */
         .hero { height: 50vh; background-size: cover; background-position: center; display: flex; align-items: flex-end; padding: 50px; background-image: linear-gradient(to top, var(--bg), transparent); }
         .row-title { margin: 30px 0 10px 50px; font-size: 22px; font-weight: bold; }
         .row { display: flex; overflow-x: auto; padding: 0 50px 30px; gap: 15px; scrollbar-width: none; }
@@ -30,10 +29,14 @@
         #details-page { display: none; padding: 120px 50px 50px; min-height: 100vh; }
         .details-poster { width: 280px; border-radius: 8px; box-shadow: 0 0 20px #000; }
         .btn-play { padding: 15px 45px; background: white; color: black; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; font-size: 16px; margin-top: 20px; }
-        .btn-play:hover { background: #ccc; }
+
+        /* SELEÇÃO DE TEMPORADAS */
+        .season-selector { display: flex; gap: 10px; margin: 25px 0; overflow-x: auto; padding-bottom: 10px; }
+        .btn-season { background: #333; color: white; border: 1px solid #444; padding: 10px 20px; cursor: pointer; border-radius: 4px; white-space: nowrap; }
+        .btn-season.active { background: var(--red); border-color: var(--red); font-weight: bold; }
 
         /* EPISODIOS */
-        .ep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; margin-top: 20px; }
+        .ep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; margin-top: 20px; }
         .ep-card { background: #222; padding: 20px; border-radius: 4px; cursor: pointer; text-align: center; border: 1px solid #333; }
         .ep-card:hover { background: var(--red); }
     </style>
@@ -59,8 +62,9 @@
                 <h2 id="det-name" style="font-size: 45px; margin: 0;"></h2>
                 <p id="det-sinopse" style="font-size: 18px; color: #ccc; line-height: 1.6;"></p>
                 <div id="main-action"></div>
+                
                 <div id="ep-area" style="display:none">
-                    <h3>Episódios</h3>
+                    <div id="season-buttons" class="season-selector"></div>
                     <div id="ep-grid" class="ep-grid"></div>
                 </div>
             </div>
@@ -123,6 +127,7 @@
     function showDetails(item) {
         document.getElementById('home-page').style.display = 'none';
         document.getElementById('details-page').style.display = 'block';
+        window.scrollTo(0,0);
         
         const nome = item.Nome || item.nome;
         const link = item.Link || item.link;
@@ -138,23 +143,50 @@
             action.innerHTML = `<button class="btn-play" onclick="startPlayer('${link}')">▶ ASSISTIR FILME</button>`;
             epArea.style.display = 'none';
         } else {
-            action.innerHTML = "<p style='color:var(--red); font-weight:bold;'>Selecione o episódio:</p>";
+            action.innerHTML = "";
             epArea.style.display = 'block';
-            const eps = episodios.filter(e => (e.Nome || e.nome || "").trim().toLowerCase() === nome.trim().toLowerCase());
-            document.getElementById('ep-grid').innerHTML = eps.map(e => `
-                <div class="ep-card" onclick="startPlayer('${e.Link || e.link}')">Episódio ${e.Episódio || e.episodio}</div>
+            
+            // 1. Filtrar todos os episódios desta série
+            const epsSérie = episodios.filter(e => (e.Nome || e.nome || "").trim().toLowerCase() === nome.trim().toLowerCase());
+            
+            // 2. Descobrir quais temporadas existem
+            const temporadasUnicas = [...new Set(epsSérie.map(e => e.Temporada || e.temporada))].sort((a,b) => a-b);
+            
+            // 3. Criar os botões de temporadas
+            const btnArea = document.getElementById('season-buttons');
+            btnArea.innerHTML = temporadasUnicas.map(t => `
+                <button class="btn-season" id="btn-t-${t}" onclick="filtrarTemporada('${nome}', ${t})">Temporada ${t}</button>
             `).join('');
+
+            // 4. Mostrar a primeira temporada por padrão
+            if(temporadasUnicas.length > 0) {
+                filtrarTemporada(nome, temporadasUnicas[0]);
+            }
         }
     }
 
-    // A SOLUÇÃO FINAL: Redireciona na mesma aba para burlar o bloqueio de Frame
+    function filtrarTemporada(nomeSerie, numTemporada) {
+        // Estilo dos botões
+        document.querySelectorAll('.btn-season').forEach(b => b.classList.remove('active'));
+        const btnAtivo = document.getElementById(`btn-t-${numTemporada}`);
+        if(btnAtivo) btnAtivo.classList.add('active');
+
+        // Filtrar episódios
+        const grid = document.getElementById('ep-grid');
+        const epsFiltrados = episodios.filter(e => 
+            (e.Nome || e.nome || "").trim().toLowerCase() === nomeSerie.trim().toLowerCase() && 
+            (e.Temporada || e.temporada) == numTemporada
+        ).sort((a,b) => (a.Episódio || a.episodio) - (b.Episódio || b.episodio));
+
+        grid.innerHTML = epsFiltrados.map(e => `
+            <div class="ep-card" onclick="startPlayer('${e.Link || e.link}')">
+                Episódio ${e.Episódio || e.episodio}
+            </div>
+        `).join('');
+    }
+
     function startPlayer(url) {
-        if(!url || url === "undefined" || url === "") {
-            alert("Link não encontrado no CSV!");
-            return;
-        }
-        // Isso muda o endereço da página atual para o vídeo.
-        // O usuário assiste e usa o "Voltar" do celular/browser para retornar ao PHFLIX.
+        if(!url || url === "undefined" || url === "") return alert("Link não encontrado!");
         window.location.href = url;
     }
 
