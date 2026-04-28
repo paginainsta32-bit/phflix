@@ -1,0 +1,34 @@
+{
+  "banners": [
+    {
+      "Nome": "Peaky Blinders",
+      "Imagem": "https://image.tmdb.org/t/p/original/v997hPn67IuYvT59p87S9vP8uO0.jpg"
+    }
+  ],
+  "conteudos": [
+    {
+      "Nome": "Os Garotos",
+      "Capa": "https://image.tmdb.org/t/p/w500/mY7pS7owm91o9vDXpM9p3OUJuzp.jpg",
+      "Categoria": "Ação, Ficção",
+      "Sinopse": "Um grupo de justiceiros planeja acabar com super-heróis corruptos.",
+      "Tipo": "Série",
+      "Link": ""
+    },
+    {
+      "Nome": "Kraven",
+      "Capa": "https://image.tmdb.org/t/p/w500/nZ8v5Dey5X5pGvA5K9V0y1zK5zO.jpg",
+      "Categoria": "Ação",
+      "Sinopse": "O imigrante russo Sergei Kravinoff está em uma missão para provar que é o maior caçador do mundo.",
+      "Tipo": "Filme",
+      "Link": "https://oneplayer.site/embed/kraven-exemplo"
+    }
+  ],
+  "episodios": [
+    {
+      "Nome": "Os Garotos",
+      "Temporada": 1,
+      "Episódio": 1,
+      "Link": "https://oneplayer.site/embed/boys-s1-e1"
+    }
+  ]
+}
