@@ -2,52 +2,37 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>PHFLIX - Galeria Digital</title>
+    <title>PHFLIX - Power CSV</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         :root { --red: #e50914; --bg: #0a0a0a; --card-bg: #181818; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; overflow-x: hidden; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; }
         
-        /* HEADER */
         header { 
             padding: 15px 50px; background: rgba(0,0,0,0.95); 
             display: flex; justify-content: space-between; align-items: center;
             position: fixed; width: 100%; z-index: 1000; box-sizing: border-box;
         }
-        .search-box input { 
-            background: #222; border: 1px solid #444; color: white; padding: 8px 15px; 
-            border-radius: 20px; outline: none; width: 250px;
-        }
+        .search-box input { background: #222; border: 1px solid #444; color: white; padding: 8px 15px; border-radius: 20px; outline: none; width: 250px; }
 
-        /* PAGINAÇÃO */
-        #main-ui { display: block; }
+        #main-ui { display: block; padding-top: 70px; }
         #player-ui { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; }
-        .btn-exit-player { 
-            position: absolute; top: 20px; left: 20px; z-index: 10000;
-            background: var(--red); color: white; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; border-radius: 4px;
-        }
+        .btn-exit { position: absolute; top: 20px; left: 20px; z-index: 10000; background: var(--red); color: white; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; border-radius: 4px; }
 
-        /* GRID E CARDS */
-        #home-page { padding-top: 70px; }
-        .hero { height: 50vh; background-size: cover; background-position: center; display: flex; align-items: flex-end; padding: 50px; background-image: linear-gradient(to top, var(--bg), transparent); margin-bottom: 20px; }
+        .hero { height: 50vh; background-size: cover; background-position: center; display: flex; align-items: flex-end; padding: 50px; background-image: linear-gradient(to top, var(--bg), transparent); }
         .row-title { margin: 30px 0 10px 50px; font-size: 22px; font-weight: bold; }
         .row { display: flex; overflow-x: auto; padding: 0 50px 30px; gap: 15px; scrollbar-width: none; }
-        .row::-webkit-scrollbar { display: none; }
-        .card { min-width: 180px; max-width: 180px; transition: 0.3s; cursor: pointer; background: var(--card-bg); border-radius: 4px; overflow: hidden; }
-        .card:hover { transform: scale(1.1); z-index: 10; outline: 2px solid white; }
+        .card { min-width: 180px; transition: 0.3s; cursor: pointer; background: var(--card-bg); border-radius: 4px; overflow: hidden; }
+        .card:hover { transform: scale(1.1); outline: 2px solid white; z-index: 5; }
         .card img { width: 100%; height: 260px; object-fit: cover; }
 
-        /* DETALHES */
-        #details-page { display: none; padding: 120px 50px; min-height: 100vh; }
-        .details-poster { width: 280px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 0 20px #000; }
-        .btn-play { padding: 15px 45px; background: white; color: black; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; font-size: 16px; margin: 20px 0; }
-
-        /* EPISODIOS */
-        .ep-section { margin-top: 30px; }
-        .ep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        #details-page { display: none; padding: 120px 50px; }
+        .details-poster { width: 280px; border-radius: 8px; }
+        .btn-play { padding: 15px 45px; background: white; color: black; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; margin-top: 20px; }
+        
+        .ep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 20px; }
         .ep-card { background: #222; padding: 15px; border-radius: 4px; cursor: pointer; text-align: center; border: 1px solid #333; }
-        .ep-card:hover { background: var(--red); border-color: white; }
-
-        iframe { width: 100%; height: 100%; border: none; }
+        .ep-card:hover { background: var(--red); }
     </style>
 </head>
 <body>
@@ -55,56 +40,73 @@
 <div id="main-ui">
     <header>
         <div style="font-size: 24px; font-weight: bold; color: var(--red); cursor: pointer;" onclick="showHome()">PHFLIX</div>
-        <div class="search-box"><input type="text" id="search-input" placeholder="O que vamos assistir?" oninput="filtrarBusca()"></div>
+        <div class="search-box"><input type="text" id="search-input" placeholder="Pesquisar no CSV..." oninput="filtrar()"></div>
     </header>
 
     <div id="home-page">
-        <div id="hero" class="hero"><h1 id="hero-title"></h1></div>
+        <div id="hero" class="hero"><h1 id="hero-title">Carregando catálogo...</h1></div>
         <div id="rows-area"></div>
     </div>
 
     <div id="details-page">
-        <div style="color: var(--red); cursor: pointer; font-weight: bold; margin-bottom: 20px;" onclick="showHome()">← VOLTAR</div>
+        <div style="color: var(--red); cursor: pointer; margin-bottom: 20px;" onclick="showHome()">← VOLTAR</div>
         <div style="display: flex; gap: 40px; flex-wrap: wrap;">
             <img id="det-img" class="details-poster">
-            <div style="flex: 1; min-width: 300px;">
-                <h2 id="det-name" style="font-size: 45px; margin: 0;"></h2>
-                <p id="det-sinopse" style="font-size: 18px; color: #ccc; line-height: 1.6;"></p>
+            <div style="flex: 1;">
+                <h2 id="det-name" style="font-size: 40px; margin: 0;"></h2>
+                <p id="det-sinopse" style="color: #ccc; line-height: 1.6; max-width: 700px;"></p>
                 <div id="main-action"></div>
+                <div id="ep-area" style="display:none">
+                    <h3>Episódios</h3>
+                    <div id="ep-grid" class="ep-grid"></div>
+                </div>
             </div>
-        </div>
-        <div id="ep-area" class="ep-section" style="display:none">
-            <h3 style="border-bottom: 1px solid #333; padding-bottom: 10px;">Episódios</h3>
-            <div id="ep-grid" class="ep-grid"></div>
         </div>
     </div>
 </div>
 
 <div id="player-ui">
-    <button class="btn-exit-player" onclick="stopPlayer()">← SAIR DO PLAYER</button>
+    <button class="btn-exit" onclick="stopPlayer()">SAIR DO PLAYER</button>
     <iframe id="fullscreen-iframe" allowfullscreen allow="autoplay"></iframe>
 </div>
 
 <script>
-    let db = { banners: [], conteudos: [], episodios: [] };
-    let filteredList = [];
+    let conteudos = [];
+    let episodios = [];
+
+    // Função para carregar qualquer arquivo CSV
+    function carregarCSV(arquivo) {
+        return new Promise((resolve) => {
+            Papa.parse(arquivo, {
+                download: true,
+                header: true, // Usa a primeira linha como nome das colunas
+                skipEmptyLines: true,
+                complete: (results) => resolve(results.data)
+            });
+        });
+    }
 
     async function init() {
         try {
-            // Busca o JSON local (GitHub hospeda ambos, então o link é relativo)
-            const response = await fetch('dados.json');
-            db = await response.json();
+            // Carrega as 3 tabelas em paralelo
+            const [dataBanners, dataCont, dataEps] = await Promise.all([
+                carregarCSV('banners.csv'),
+                carregarCSV('conteudos.csv'),
+                carregarCSV('episodios.csv')
+            ]);
 
-            // Configura Banner
-            if(db.banners.length) {
-                document.getElementById('hero').style.backgroundImage = `linear-gradient(to top, #0a0a0a, transparent), url('${db.banners[0].Imagem}')`;
-                document.getElementById('hero-title').innerText = db.banners[0].Nome;
+            conteudos = dataCont;
+            episodios = dataEps;
+
+            // Banner
+            if(dataBanners.length) {
+                document.getElementById('hero').style.backgroundImage = `linear-gradient(to top, #0a0a0a, transparent), url('${dataBanners[0].Imagem}')`;
+                document.getElementById('hero-title').innerText = dataBanners[0].Nome;
             }
 
-            renderHome(db.conteudos);
+            renderHome(conteudos);
         } catch (e) {
-            console.error("Erro ao carregar dados.json:", e);
-            document.getElementById('hero-title').innerText = "Erro ao carregar banco de dados.";
+            alert("Erro ao ler arquivos CSV. Verifique se os nomes estão corretos no GitHub.");
         }
     }
 
@@ -114,58 +116,49 @@
         const cats = {};
         
         lista.forEach(i => {
-            const cArr = (i.Categoria || "Geral").split(',');
-            cArr.forEach(c => {
-                const name = c.trim();
-                if(!cats[name]) cats[name] = [];
-                cats[name].push(i);
+            const generos = (i.Categoria || "Geral").split(',');
+            generos.forEach(g => {
+                const nomeCat = g.trim();
+                if(!cats[nomeCat]) cats[nomeCat] = [];
+                cats[nomeCat].push(i);
             });
         });
 
         for(let c in cats) {
-            const section = document.createElement('div');
-            section.innerHTML = `
-                <div class="row-title">${c}</div>
-                <div class="row">
-                    ${cats[c].map(item => `
-                        <div class="card" onclick='showDetails(${JSON.stringify(item).replace(/'/g, "&apos;")})'>
-                            <img src="${item.Capa}">
-                        </div>`).join('')}
-                </div>`;
-            area.appendChild(section);
+            const row = document.createElement('div');
+            row.innerHTML = `<div class="row-title">${c}</div><div class="row">${cats[c].map(item => `
+                <div class="card" onclick='showDetails(${JSON.stringify(item).replace(/'/g, "&apos;")})'>
+                    <img src="${item.Capa}">
+                </div>`).join('')}</div>`;
+            area.appendChild(row);
         }
     }
 
     function showDetails(item) {
         document.getElementById('home-page').style.display = 'none';
         document.getElementById('details-page').style.display = 'block';
-        window.scrollTo(0,0);
-
         document.getElementById('det-img').src = item.Capa;
         document.getElementById('det-name').innerText = item.Nome;
         document.getElementById('det-sinopse').innerText = item.Sinopse || "";
 
         const action = document.getElementById('main-action');
         const epArea = document.getElementById('ep-area');
-        
+
         if(item.Tipo === "Filme") {
-            action.innerHTML = `<button class="btn-play" onclick="startPlayer('${item.Link}')">▶ ASSISTIR AGORA</button>`;
+            action.innerHTML = `<button class="btn-play" onclick="startPlayer('${item.Link}')">ASSISTIR AGORA</button>`;
             epArea.style.display = 'none';
         } else {
-            action.innerHTML = "<p style='color:var(--red); font-weight:bold;'>Escolha um episódio abaixo:</p>";
+            action.innerHTML = "<p style='color:var(--red)'>Selecione o episódio:</p>";
             epArea.style.display = 'block';
-            
-            const eps = db.episodios.filter(e => e.Nome.trim().toLowerCase() === item.Nome.trim().toLowerCase());
+            const eps = episodios.filter(e => e.Nome.trim().toLowerCase() === item.Nome.trim().toLowerCase());
             document.getElementById('ep-grid').innerHTML = eps.sort((a,b) => a.Episódio - b.Episódio).map(e => `
-                <div class="ep-card" onclick="startPlayer('${e.Link}')">
-                    <strong>Episódio ${e.Episódio}</strong><br><small>Temporada ${e.Temporada}</small>
-                </div>
+                <div class="ep-card" onclick="startPlayer('${e.Link}')">Ep ${e.Episódio} (T${e.Temporada})</div>
             `).join('');
         }
     }
 
     function startPlayer(url) {
-        if(!url) return alert("Link de vídeo não disponível.");
+        if(!url) return alert("Link indisponível.");
         document.getElementById('main-ui').style.display = 'none';
         document.getElementById('player-ui').style.display = 'block';
         document.getElementById('fullscreen-iframe').src = url;
@@ -182,10 +175,9 @@
         document.getElementById('details-page').style.display = 'none';
     }
 
-    function filtrarBusca() {
-        const t = document.getElementById('search-input').value.toLowerCase();
-        const filtrados = db.conteudos.filter(i => i.Nome.toLowerCase().includes(t) || i.Categoria.toLowerCase().includes(t));
-        renderHome(filtrados);
+    function filtrar() {
+        const termo = document.getElementById('search-input').value.toLowerCase();
+        renderHome(conteudos.filter(i => i.Nome.toLowerCase().includes(termo)));
     }
 
     init();
