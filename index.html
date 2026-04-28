@@ -97,34 +97,40 @@
 <script>
     const TOKEN = 'KFB2YupQfqQZj6kFDwO6NKaje07vd6DP';
     const IP = 'http://213.199.56.115';
+    const PROXY = 'https://cors-anywhere.herokuapp.com/';
     const TBL = { CONTENT: 1186, BANNER: 1189, EPS: 1191 };
     
     let todosConteudos = [];
 
+    // Função API ajustada com Proxy para evitar erro de Mixed Content no GitHub
     async function api(id) {
-        const r = await fetch(`${IP}/api/database/rows/table/${id}/?user_field_names=true`, {
+        const url = `${IP}/api/database/rows/table/${id}/?user_field_names=true`;
+        const r = await fetch(PROXY + url, {
             headers: { 'Authorization': `Token ${TOKEN}` }
         });
         return await r.json();
     }
 
     async function init() {
-        const b = await api(TBL.BANNER);
-        if(b.results.length) {
-            document.getElementById('hero').style.backgroundImage = `linear-gradient(to top, #0a0a0a, transparent), url('${b.results[0].Imagem}')`;
-            document.getElementById('hero-title').innerText = b.results[0].Nome;
-        }
+        try {
+            const b = await api(TBL.BANNER);
+            if(b.results && b.results.length) {
+                document.getElementById('hero').style.backgroundImage = `linear-gradient(to top, #0a0a0a, transparent), url('${b.results[0].Imagem}')`;
+                document.getElementById('hero-title').innerText = b.results[0].Nome;
+            }
 
-        const data = await api(TBL.CONTENT);
-        todosConteudos = data.results;
-        renderizarHome(todosConteudos);
+            const data = await api(TBL.CONTENT);
+            todosConteudos = data.results;
+            renderizarHome(todosConteudos);
+        } catch (e) {
+            console.error("Erro ao carregar dados. Verifique o acesso ao Proxy.", e);
+        }
     }
 
     function renderizarHome(lista) {
         const area = document.getElementById('rows-area');
         area.innerHTML = "";
         
-        // Mapear Categorias (Lida com múltiplas categorias separadas por vírgula)
         const catsMap = {};
         lista.forEach(item => {
             const categoriasStr = item.Categoria || "Geral";
@@ -183,37 +189,46 @@
 
     async function carregarEpisodios(nomeSerie) {
         const data = await api(TBL.EPS);
-        const filtrados = data.results.filter(e => e.Nome.trim().toLowerCase() === nomeSerie.trim().toLowerCase());
+        const filtrados = data.results.filter(e => e.Nome && e.Nome.trim().toLowerCase() === nomeSerie.trim().toLowerCase());
         
-        const seasons = [...new Set(filtrados.map(e => e.Temporada))].sort();
+        const seasons = [...new Set(filtrados.map(e => e.Temporada))].sort((a,b) => a - b);
         const tabs = document.getElementById('tab-bar');
-        tabs.innerHTML = seasons.map(s => `<div class="tab ${s==seasons[0]?'active':''}" onclick="renderSeason(${s}, '${nomeSerie}')">Temporada ${s}</div>`).join('');
+        tabs.innerHTML = seasons.map(s => `<div class="tab ${s==seasons[0]?'active':''}" onclick="renderSeason(${s}, '${nomeSerie.replace(/'/g, "\\'")}')">Temporada ${s}</div>`).join('');
         
         renderSeason(seasons[0], nomeSerie, filtrados);
     }
 
     function renderSeason(sNum, serieNome, preLoaded) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        if(event) event.target.classList.add('active');
+        if(event && event.target.classList.contains('tab')) event.target.classList.add('active');
 
         const grid = document.getElementById('ep-grid');
-        // Se preLoaded não existir, filtramos de novo (pode ser otimizado guardando em cache)
-        grid.innerHTML = "Carregando episódios...";
+        grid.innerHTML = "Carregando...";
         
-        // Simulação de busca/render
-        api(TBL.EPS).then(data => {
-            const eps = data.results.filter(e => e.Nome.trim().toLowerCase() === serieNome.trim().toLowerCase() && e.Temporada == sNum);
+        const render = (lista) => {
+            const eps = lista.filter(e => e.Nome && e.Nome.trim().toLowerCase() === serieNome.trim().toLowerCase() && e.Temporada == sNum);
             grid.innerHTML = eps.sort((a,b) => a.Episódio - b.Episódio).map(e => `
                 <div class="ep-card" onclick="openPlayer('${e.Link}')">
                     <strong>Episódio ${e.Episódio}</strong>
                 </div>
             `).join('');
-        });
+        };
+
+        if(preLoaded) {
+            render(preLoaded);
+        } else {
+            api(TBL.EPS).then(data => render(data.results));
+        }
     }
 
     function openPlayer(url) {
-        document.getElementById('video-iframe').src = url;
+        // Se o player estiver bloqueando o iframe, usaremos window.open como alternativa de segurança
+        const iframe = document.getElementById('video-iframe');
+        iframe.src = url;
         document.getElementById('player-modal').style.display = 'block';
+        
+        // Verificação amigável caso o link não suporte iframe
+        console.log("Abrindo fonte:", url);
     }
 
     function closePlayer() {
