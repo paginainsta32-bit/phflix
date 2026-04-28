@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>PHFLIX - Power CSV</title>
+    <title>PHFLIX - Pro Edition</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         :root { --red: #e50914; --bg: #0a0a0a; --card-bg: #181818; }
@@ -12,22 +12,12 @@
             padding: 15px 50px; background: rgba(0,0,0,0.95); 
             display: flex; justify-content: space-between; align-items: center;
             position: fixed; width: 100%; z-index: 1000; box-sizing: border-box;
+            border-bottom: 1px solid #222;
         }
         .search-box input { background: #222; border: 1px solid #444; color: white; padding: 10px 20px; border-radius: 25px; outline: none; width: 250px; }
 
         #main-ui { display: block; padding-top: 80px; }
         
-        /* PLAYER EM TELA CHEIA REAL */
-        #player-ui { 
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: #000; z-index: 9999; 
-        }
-        .btn-exit-player { 
-            position: absolute; top: 20px; left: 20px; z-index: 10001;
-            background: var(--red); color: white; border: none; padding: 12px 25px; 
-            cursor: pointer; font-weight: bold; border-radius: 4px;
-        }
-
         /* GRID */
         .hero { height: 50vh; background-size: cover; background-position: center; display: flex; align-items: flex-end; padding: 50px; background-image: linear-gradient(to top, var(--bg), transparent); }
         .row-title { margin: 30px 0 10px 50px; font-size: 22px; font-weight: bold; }
@@ -37,17 +27,15 @@
         .card img { width: 100%; height: 250px; object-fit: cover; }
 
         /* DETALHES */
-        #details-page { display: none; padding: 120px 50px 50px; }
+        #details-page { display: none; padding: 120px 50px 50px; min-height: 100vh; }
         .details-poster { width: 280px; border-radius: 8px; box-shadow: 0 0 20px #000; }
         .btn-play { padding: 15px 45px; background: white; color: black; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; font-size: 16px; margin-top: 20px; }
+        .btn-play:hover { background: #ccc; }
 
         /* EPISODIOS */
         .ep-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; margin-top: 20px; }
         .ep-card { background: #222; padding: 20px; border-radius: 4px; cursor: pointer; text-align: center; border: 1px solid #333; }
         .ep-card:hover { background: var(--red); }
-
-        /* O SEGREDO: Sandbox e Iframe sem restrição de origem */
-        iframe { width: 100%; height: 100%; border: none; background: #000; }
     </style>
 </head>
 <body>
@@ -80,14 +68,6 @@
     </div>
 </div>
 
-<div id="player-ui">
-    <button class="btn-exit-player" onclick="stopPlayer()">← FECHAR VÍDEO</button>
-    <iframe id="fullscreen-iframe" 
-            sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-top-navigation" 
-            allowfullscreen>
-    </iframe>
-</div>
-
 <script>
     let conteudos = [];
     let episodios = [];
@@ -98,27 +78,26 @@
                 download: true,
                 header: true,
                 skipEmptyLines: true,
-                complete: (results) => resolve(results.data)
+                complete: (results) => resolve(results.data),
+                error: () => resolve([])
             });
         });
     }
 
     async function init() {
-        try {
-            const [dBanners, dCont, dEps] = await Promise.all([
-                carregarCSV('banners.csv'),
-                carregarCSV('conteudos.csv'),
-                carregarCSV('episodios.csv')
-            ]);
-            conteudos = dCont;
-            episodios = dEps;
+        const [dBanners, dCont, dEps] = await Promise.all([
+            carregarCSV('banners.csv'),
+            carregarCSV('conteudos.csv'),
+            carregarCSV('episodios.csv')
+        ]);
+        conteudos = dCont;
+        episodios = dEps;
 
-            if(dBanners.length) {
-                document.getElementById('hero').style.backgroundImage = `linear-gradient(to top, #0a0a0a, transparent), url('${dBanners[0].Imagem || dBanners[0].imagem}')`;
-                document.getElementById('hero-title').innerText = dBanners[0].Nome || dBanners[0].nome;
-            }
-            renderHome(conteudos);
-        } catch (e) { console.error("Erro ao carregar CSVs"); }
+        if(dBanners.length) {
+            document.getElementById('hero').style.backgroundImage = `linear-gradient(to top, #0a0a0a, transparent), url('${dBanners[0].Imagem || dBanners[0].imagem}')`;
+            document.getElementById('hero-title').innerText = dBanners[0].Nome || dBanners[0].nome;
+        }
+        renderHome(conteudos);
     }
 
     function renderHome(lista) {
@@ -126,8 +105,8 @@
         area.innerHTML = "";
         const cats = {};
         lista.forEach(i => {
-            const g = (i.Categoria || i.categoria || "Geral").split(',');
-            g.forEach(cat => {
+            const catField = i.Categoria || i.categoria || "Geral";
+            catField.split(',').forEach(cat => {
                 const n = cat.trim();
                 if(!cats[n]) cats[n] = [];
                 cats[n].push(i);
@@ -156,10 +135,10 @@
         const epArea = document.getElementById('ep-area');
 
         if((item.Tipo || item.tipo) === "Filme") {
-            action.innerHTML = `<button class="btn-play" onclick="startPlayer('${link}')">▶ ASSISTIR AGORA</button>`;
+            action.innerHTML = `<button class="btn-play" onclick="startPlayer('${link}')">▶ ASSISTIR FILME</button>`;
             epArea.style.display = 'none';
         } else {
-            action.innerHTML = "<p style='color:var(--red)'>Selecione o episódio:</p>";
+            action.innerHTML = "<p style='color:var(--red); font-weight:bold;'>Selecione o episódio:</p>";
             epArea.style.display = 'block';
             const eps = episodios.filter(e => (e.Nome || e.nome || "").trim().toLowerCase() === nome.trim().toLowerCase());
             document.getElementById('ep-grid').innerHTML = eps.map(e => `
@@ -168,32 +147,21 @@
         }
     }
 
+    // A SOLUÇÃO FINAL: Redireciona na mesma aba para burlar o bloqueio de Frame
     function startPlayer(url) {
-        if(!url || url === "undefined") return alert("Link de vídeo não encontrado no CSV!");
-        
-        // Se o link for do oneplayer ou similar, tentamos forçar o carregamento
-        document.getElementById('main-ui').style.display = 'none';
-        document.getElementById('player-ui').style.display = 'block';
-        
-        const frame = document.getElementById('fullscreen-iframe');
-        frame.src = url;
-
-        // Caso o player bloqueie mesmo com sandbox, a única saída é o window.location
-        frame.onerror = function() {
-            alert("Este servidor de vídeo não permite visualização interna. Redirecionando...");
-            window.location.href = url;
-        };
-    }
-
-    function stopPlayer() {
-        document.getElementById('main-ui').style.display = 'block';
-        document.getElementById('player-ui').style.display = 'none';
-        document.getElementById('fullscreen-iframe').src = '';
+        if(!url || url === "undefined" || url === "") {
+            alert("Link não encontrado no CSV!");
+            return;
+        }
+        // Isso muda o endereço da página atual para o vídeo.
+        // O usuário assiste e usa o "Voltar" do celular/browser para retornar ao PHFLIX.
+        window.location.href = url;
     }
 
     function showHome() {
         document.getElementById('home-page').style.display = 'block';
         document.getElementById('details-page').style.display = 'none';
+        window.scrollTo(0,0);
     }
 
     function filtrar() {
